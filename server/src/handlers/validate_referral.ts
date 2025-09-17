@@ -1,13 +1,32 @@
+import { db } from '../db';
+import { affiliatesTable } from '../db/schema';
+import { eq } from 'drizzle-orm';
 import { type ValidateReferralInput, type ValidateReferralResponse } from '../schema';
 
 export async function validateReferral(input: ValidateReferralInput): Promise<ValidateReferralResponse> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is to validate a referral code and return affiliate information if valid.
-  // Should check against dummy affiliate data to see if the referral code exists.
-  
-  return {
-    valid: true, // Placeholder - should check against dummy data
-    affiliate_id: 'AFF001', // Placeholder
-    affiliate_name: 'John Doe' // Placeholder
-  };
+  try {
+    // Query database for affiliate with matching referral code
+    const affiliates = await db.select()
+      .from(affiliatesTable)
+      .where(eq(affiliatesTable.referral_code, input.referral_code))
+      .execute();
+
+    // Check if affiliate exists
+    if (affiliates.length === 0) {
+      return {
+        valid: false
+      };
+    }
+
+    const affiliate = affiliates[0];
+    
+    return {
+      valid: true,
+      affiliate_id: affiliate.id,
+      affiliate_name: affiliate.name
+    };
+  } catch (error) {
+    console.error('Referral validation failed:', error);
+    throw error;
+  }
 }

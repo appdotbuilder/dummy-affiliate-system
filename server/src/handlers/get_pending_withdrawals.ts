@@ -1,30 +1,23 @@
+import { db } from '../db';
+import { withdrawalRequestsTable } from '../db/schema';
+import { eq } from 'drizzle-orm';
 import { type WithdrawalRequest } from '../schema';
 
-export async function getPendingWithdrawals(): Promise<WithdrawalRequest[]> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is to return all pending withdrawal requests for admin review.
-  // Should filter dummy withdrawal data by status 'Pending'.
-  
-  return [
-    {
-      id: 'WD001',
-      affiliate_id: 'AFF001',
-      affiliate_name: 'John Doe',
-      amount: 100.00,
-      status: 'Pending',
-      payment_proof_url: null,
-      created_at: new Date('2024-03-01'),
-      updated_at: new Date('2024-03-01')
-    },
-    {
-      id: 'WD002',
-      affiliate_id: 'AFF002',
-      affiliate_name: 'Jane Smith',
-      amount: 250.00,
-      status: 'Pending',
-      payment_proof_url: null,
-      created_at: new Date('2024-03-02'),
-      updated_at: new Date('2024-03-02')
-    }
-  ];
-}
+export const getPendingWithdrawals = async (): Promise<WithdrawalRequest[]> => {
+  try {
+    // Query for pending withdrawal requests
+    const results = await db.select()
+      .from(withdrawalRequestsTable)
+      .where(eq(withdrawalRequestsTable.status, 'Pending'))
+      .execute();
+
+    // Convert numeric fields back to numbers before returning
+    return results.map(withdrawal => ({
+      ...withdrawal,
+      amount: parseFloat(withdrawal.amount) // Convert numeric column from string to number
+    }));
+  } catch (error) {
+    console.error('Failed to fetch pending withdrawals:', error);
+    throw error;
+  }
+};

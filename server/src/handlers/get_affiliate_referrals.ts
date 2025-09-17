@@ -1,37 +1,25 @@
+import { db } from '../db';
+import { referredCustomersTable } from '../db/schema';
 import { type ReferredCustomer } from '../schema';
+import { eq, desc } from 'drizzle-orm';
 
-export async function getAffiliateReferrals(affiliateId: string): Promise<ReferredCustomer[]> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is to return all referred customers for a specific affiliate.
-  // Should filter dummy referred customer data by affiliate_id.
-  
-  return [
-    {
-      id: 'CUST001',
-      name: 'Alice Johnson',
-      affiliate_id: affiliateId,
-      order_amount: 299.99,
-      order_type: 'recurring',
-      commission_earned: 29.99,
-      created_at: new Date('2024-02-15')
-    },
-    {
-      id: 'CUST002',
-      name: 'Bob Wilson',
-      affiliate_id: affiliateId,
-      order_amount: 149.99,
-      order_type: 'one-time',
-      commission_earned: 7.50,
-      created_at: new Date('2024-02-20')
-    },
-    {
-      id: 'CUST003',
-      name: 'Carol Davis',
-      affiliate_id: affiliateId,
-      order_amount: 499.99,
-      order_type: 'recurring',
-      commission_earned: 49.99,
-      created_at: new Date('2024-03-01')
-    }
-  ];
-}
+export const getAffiliateReferrals = async (affiliateId: string): Promise<ReferredCustomer[]> => {
+  try {
+    // Query referred customers for the specific affiliate, ordered by creation date (newest first)
+    const results = await db.select()
+      .from(referredCustomersTable)
+      .where(eq(referredCustomersTable.affiliate_id, affiliateId))
+      .orderBy(desc(referredCustomersTable.created_at))
+      .execute();
+
+    // Convert numeric fields back to numbers before returning
+    return results.map(customer => ({
+      ...customer,
+      order_amount: parseFloat(customer.order_amount),
+      commission_earned: parseFloat(customer.commission_earned)
+    }));
+  } catch (error) {
+    console.error('Get affiliate referrals failed:', error);
+    throw error;
+  }
+};

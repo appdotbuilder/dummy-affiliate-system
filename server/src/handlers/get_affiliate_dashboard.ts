@@ -1,28 +1,49 @@
+import { db } from '../db';
+import { affiliatesTable, referredCustomersTable } from '../db/schema';
 import { type AffiliateDashboardResponse } from '../schema';
+import { eq, sum } from 'drizzle-orm';
 
 export async function getAffiliateDashboard(affiliateId: string): Promise<AffiliateDashboardResponse> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is to return dashboard data for a specific affiliate.
-  // Should:
-  // 1. Find the affiliate by ID in dummy data
-  // 2. Calculate total earnings, sales, and commissions
-  // 3. Return comprehensive dashboard information
-  
-  return {
-    affiliate: {
-      id: affiliateId,
-      name: 'John Doe',
-      email: 'john@example.com',
-      referral_code: 'JOHNDOE2024',
-      plan: 'Basic',
-      total_revenue: 1500.00,
-      total_commission: 150.00,
-      recurring_customers: 10,
-      one_time_customers: 5,
-      created_at: new Date('2024-01-15')
-    },
-    total_earnings: 150.00,
-    total_sales: 1500.00,
-    total_commissions: 150.00
-  };
+  try {
+    // Find the affiliate by ID
+    const affiliateResult = await db.select()
+      .from(affiliatesTable)
+      .where(eq(affiliatesTable.id, affiliateId))
+      .execute();
+
+    if (affiliateResult.length === 0) {
+      throw new Error('Affiliate not found');
+    }
+
+    const affiliate = affiliateResult[0];
+
+    // Calculate total earnings from referred customers
+    const earningsResult = await db.select({
+      total_earnings: sum(referredCustomersTable.commission_earned),
+      total_sales: sum(referredCustomersTable.order_amount),
+    })
+      .from(referredCustomersTable)
+      .where(eq(referredCustomersTable.affiliate_id, affiliateId))
+      .execute();
+
+    // Handle case where affiliate has no referrals yet
+    const earnings = earningsResult[0];
+    const totalEarnings = earnings.total_earnings ? parseFloat(earnings.total_earnings) : 0;
+    const totalSales = earnings.total_sales ? parseFloat(earnings.total_sales) : 0;
+    const totalCommissions = parseFloat(affiliate.total_commission);
+
+    return {
+      affiliate: {
+        ...affiliate,
+        total_revenue: parseFloat(affiliate.total_revenue),
+        total_commission: totalCommissions,
+      },
+      total_earnings: totalEarnings,
+      total_sales: totalSales,
+      total_commissions: totalCommissions
+    };
+  } catch (error) {
+    console.error('Get affiliate dashboard failed:', error);
+    throw error;
+  }
 }

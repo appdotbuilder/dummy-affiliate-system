@@ -1,21 +1,32 @@
+import { db } from '../db';
+import { withdrawalRequestsTable } from '../db/schema';
 import { type DeclineWithdrawalInput, type WithdrawalRequest } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function declineWithdrawal(input: DeclineWithdrawalInput): Promise<WithdrawalRequest> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is to decline a withdrawal request and update its status.
-  // Should:
-  // 1. Find the withdrawal request by ID in dummy data
-  // 2. Update status to 'Declined'
-  // 3. Update the updated_at timestamp
-  
-  return {
-    id: input.id,
-    affiliate_id: 'AFF001', // Placeholder
-    affiliate_name: 'John Doe', // Placeholder
-    amount: 100.00,
-    status: 'Declined',
-    payment_proof_url: null,
-    created_at: new Date('2024-03-01'),
-    updated_at: new Date() // Current timestamp
-  };
-}
+export const declineWithdrawal = async (input: DeclineWithdrawalInput): Promise<WithdrawalRequest> => {
+  try {
+    // Update the withdrawal request status to 'Declined' and update timestamp
+    const result = await db.update(withdrawalRequestsTable)
+      .set({
+        status: 'Declined',
+        updated_at: new Date()
+      })
+      .where(eq(withdrawalRequestsTable.id, input.id))
+      .returning()
+      .execute();
+
+    if (result.length === 0) {
+      throw new Error(`Withdrawal request with ID ${input.id} not found`);
+    }
+
+    // Convert numeric fields back to numbers before returning
+    const withdrawalRequest = result[0];
+    return {
+      ...withdrawalRequest,
+      amount: parseFloat(withdrawalRequest.amount)
+    };
+  } catch (error) {
+    console.error('Withdrawal decline failed:', error);
+    throw error;
+  }
+};
